@@ -20,12 +20,9 @@ function App() {
     setResults([]);
     setError('');
     
-    // Split by new lines, commas, or spaces
     const urls = inputText.split(/[\n, ]+/).filter(url => url.length > 0);
 
     try {
-      // In production (Vercel), /api/scrape will work automatically.
-      // Locally, you might need the full localhost URL if not using a proxy.
       const response = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,7 +42,7 @@ function App() {
 
   const getSuccessfulResults = () => results.filter(r => r.status === 'success');
 
-  // Download Handlers
+  // --- Download Handlers ---
   const downloadTxt = () => {
     const data = getSuccessfulResults().map(item => item.result).join('\n\n');
     const blob = new Blob([data], { type: 'text/plain;charset=utf-8' });
@@ -71,12 +68,7 @@ function App() {
       new Paragraph({
         children: [
           new ExternalHyperlink({
-            children: [
-              new TextRun({
-                text: item.url,
-                style: "Hyperlink",
-              }),
-            ],
+            children: [new TextRun({ text: item.url, style: "Hyperlink" })],
             link: item.url,
           }),
         ],
@@ -87,52 +79,84 @@ function App() {
       new Paragraph({ text: "" })
     ]);
 
-    const doc = new Document({
-      sections: [{ children: paragraphs }],
-    });
-
+    const doc = new Document({ sections: [{ children: paragraphs }] });
     const blob = await Packer.toBlob(doc);
     saveAs(blob, 'meta_results.docx');
   };
 
   return (
-    <div className="container">
-      <h1>Meta Title & Description Scraper</h1>
-      <p>Paste your URLs below (one per line). Duplicates are removed automatically.</p>
-      
-      <textarea 
-        rows="10" 
-        placeholder="https://www.example.com..."
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-      ></textarea>
-      
-      <button onClick={handleGenerate} disabled={loading}>
-        {loading ? 'Generating...' : 'Generate'}
-      </button>
-
-      {/* Download Buttons */}
-      {getSuccessfulResults().length > 0 && (
-        <div className="download-container">
-          <h3>Download Results</h3>
-          <button className="download-btn" onClick={downloadTxt}>Download .txt</button>
-          <button className="download-btn" onClick={downloadDocx}>Download .docx</button>
-          <button className="download-btn" onClick={downloadXlsx}>Download .xlsx</button>
+    <div className="app-layout">
+      {/* Navbar */}
+      <nav className="navbar">
+        <div className="nav-brand">
+          <div className="logo-icon">M</div>
+          <span>MetaScraper<span className="pro-badge">PRO</span></span>
         </div>
-      )}
+      </nav>
 
-      {loading && <div className="loader"></div>}
-      
-      {error && <div className="result-item error"><strong>Error:</strong> {error}</div>}
-
-      <div className="results-container">
-        {results.map((item, index) => (
-          <div key={index} className={`result-item ${item.status}`}>
-            <strong>{item.url}</strong>
-            {item.status === 'success' ? item.result : `Failed: ${item.reason}`}
+      {/* Main Content */}
+      <main className="main-content">
+        <div className="card input-card">
+          <div className="card-header">
+            <h2>Bulk URL Processor</h2>
+            <p className="subtitle">Paste your links below to extract Titles & Descriptions automatically.</p>
           </div>
-        ))}
-      </div>
+          
+          <textarea 
+            className="input-area"
+            rows="8" 
+            placeholder="Paste URLs here (https://example.com)&#10;One per line..."
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+          ></textarea>
+          
+          <div className="action-bar">
+            <button className="btn btn-primary" onClick={handleGenerate} disabled={loading}>
+              {loading ? (
+                <span className="loader-text">Processing...</span>
+              ) : (
+                'Generate Meta Data'
+              )}
+            </button>
+          </div>
+
+          {error && <div className="error-banner">{error}</div>}
+        </div>
+
+        {/* Results Section */}
+        {(results.length > 0 || loading) && (
+          <div className="results-wrapper">
+             <div className="results-header">
+                <h3>Results ({results.length})</h3>
+                {getSuccessfulResults().length > 0 && (
+                  <div className="download-actions">
+                    <button className="btn btn-outline" onClick={downloadTxt}>TXT</button>
+                    <button className="btn btn-outline" onClick={downloadDocx}>DOCX</button>
+                    <button className="btn btn-outline" onClick={downloadXlsx}>EXCEL</button>
+                  </div>
+                )}
+             </div>
+
+            {loading && <div className="loading-spinner"></div>}
+
+            <div className="results-list">
+              {results.map((item, index) => (
+                <div key={index} className={`result-card ${item.status}`}>
+                  <div className="result-icon">
+                    {item.status === 'success' ? '✅' : '⚠️'}
+                  </div>
+                  <div className="result-content">
+                    <a href={item.url} target="_blank" rel="noreferrer" className="result-url">{item.url}</a>
+                    <div className="result-text">
+                      {item.status === 'success' ? item.result : <span className="error-text">{item.reason}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
